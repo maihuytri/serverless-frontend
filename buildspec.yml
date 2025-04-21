@@ -1,100 +1,17 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for deploying the e-commerce frontend to S3 and CloudFront
+version: 0.2
 
-Parameters:
-  Environment:
-    Type: String
-    Default: dev
-    Description: Environment name
-    AllowedValues:
-      - dev
-      - prod
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - npm install
 
-Resources:
-  # S3 bucket for website hosting
-  WebsiteBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub ${AWS::AccountId}-ecommerce-${Environment}-frontend
-      WebsiteConfiguration:
-        IndexDocument: index.html
-        ErrorDocument: 404.html
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
-      CorsConfiguration:
-        CorsRules:
-          - AllowedHeaders:
-              - '*'
-            AllowedMethods:
-              - GET
-              - HEAD
-            AllowedOrigins:
-              - '*'
-            MaxAge: 3000
+  build:
+    commands:
+      - npm run build
 
-  # Bucket policy to allow public access
-  WebsiteBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref WebsiteBucket
-      PolicyDocument:
-        Statement:
-          - Action:
-              - 's3:GetObject'
-            Effect: Allow
-            Resource: !Sub ${WebsiteBucket.Arn}/*
-            Principal: '*'
-
-  # CloudFront distribution
-  CloudFrontDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Origins:
-          - DomainName: !GetAtt WebsiteBucket.RegionalDomainName
-            Id: S3Origin
-            S3OriginConfig:
-              OriginAccessIdentity: ''
-        Enabled: true
-        DefaultRootObject: index.html
-        DefaultCacheBehavior:
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-          TargetOriginId: S3Origin
-          ForwardedValues:
-            QueryString: false
-            Cookies:
-              Forward: none
-          ViewerProtocolPolicy: redirect-to-https
-        PriceClass: PriceClass_100
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
-        CustomErrorResponses:
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-
-Outputs:
-  WebsiteBucketName:
-    Description: Name of S3 bucket to hold website content
-    Value: !Ref WebsiteBucket
-
-  CloudFrontDistributionId:
-    Description: ID of CloudFront distribution
-    Value: !Ref CloudFrontDistribution
-
-  CloudFrontDomainName:
-    Description: Domain name of CloudFront distribution
-    Value: !GetAtt CloudFrontDistribution.DomainName
-
-  WebsiteURL:
-    Description: URL of the website
-    Value: !Sub https://${CloudFrontDistribution.DomainName}
+artifacts:
+  base-directory: out
+  files:
+    - '**/*'
