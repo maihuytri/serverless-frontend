@@ -1,15 +1,21 @@
-version: 0.1
+version: 0.2
 
 phases:
   install:
+    runtime-versions:
+      nodejs: 18
     commands:
       - npm install -g pnpm
       - pnpm install
+
   build:
     commands:
-      - pnpm run build  # Builds the project
-      - aws cloudfront create-invalidation --distribution-id E2KOZZQHUQI9Q2 --paths "/*"
+      - pnpm build
+      - pnpm export
+      - echo "📂 Built files:"
+      - ls -al
+
 artifacts:
+  base-directory: out
   files:
     - '**/*'
-  base-directory: out  # Directory with output files (e.g., React app)
