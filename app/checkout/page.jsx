@@ -9,13 +9,14 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { useCart } from "@/lib/cart-context"
+import { apiClient } from "@/lib/api-client"
 import { CreditCard } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 
 export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, getToken } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -39,7 +40,7 @@ export default function CheckoutPage() {
 
     // Pre-fill name if user is available
     if (user) {
-      const nameParts = user.name.split(" ")
+      const nameParts = user.name ? user.name.split(" ") : []
       setFormData((prev) => ({
         ...prev,
         firstName: nameParts[0] || "",
@@ -52,13 +53,73 @@ export default function CheckoutPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate order processing
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      // Prepare order data
+      const orderData = {
+        items: items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        totalPrice: totalPrice,
+        shippingAddress: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          phone: formData.phone
+        },
+        paymentMethod: "card"
+      };
 
-    clearCart()
-    setIsLoading(false)
-
-    router.push("/checkout/success")
+      // Get auth token and submit order to API
+      if (isAuthenticated) {
+        try {
+          const token = await getToken();
+          if (!token) {
+            throw new Error("Unable to get authentication token");
+          }
+          
+          // Submit order to API
+          await apiClient.orders.create(orderData, token);
+          
+          toast({
+            title: "Order placed successfully",
+            description: "Your order has been placed and will be processed soon."
+          });
+          
+          clearCart();
+          router.push("/checkout/success");
+        } catch (apiError) {
+          console.error('API Error:', apiError);
+          toast({
+            title: "Error placing order",
+            description: apiError.message || "Failed to communicate with the server. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        // If somehow the user got here without being authenticated
+        toast({
+          title: "Authentication required",
+          description: "Please login to complete your purchase",
+          variant: "destructive"
+        });
+        router.push("/login?redirectTo=/checkout");
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast({
+        title: "Error placing order",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   if (items.length === 0) {
@@ -190,7 +251,7 @@ export default function CheckoutPage() {
               </CardContent>
               <CardFooter>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Processing..." : `Pay ${totalPrice.toFixed(2)}`}
+                  {isLoading ? "Processing..." : `Pay $${totalPrice.toFixed(2)}`}
                 </Button>
               </CardFooter>
             </Card>

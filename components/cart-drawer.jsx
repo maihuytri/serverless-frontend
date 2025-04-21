@@ -7,10 +7,22 @@ import { useCart } from "@/lib/cart-context"
 import { Minus, Plus, Trash2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function CartDrawer({ open, onClose }) {
   const { items, removeFromCart, updateQuantity, totalPrice } = useCart()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
+  const router = useRouter()
+
+  const handleCheckout = () => {    
+    if (isAuthenticated) {
+      router.push("/checkout")
+    } else {
+      router.push("/login?redirectTo=/checkout")
+    }
+    
+    onClose()
+  }
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -79,10 +91,8 @@ export default function CartDrawer({ open, onClose }) {
                   <span>Total</span>
                   <span>${totalPrice.toFixed(2)}</span>
                 </div>
-                <Button className="w-full" asChild onClick={onClose}>
-                  <Link href={isAuthenticated ? "/checkout" : "/login?redirectTo=/checkout"}>
-                    {isAuthenticated ? "Checkout" : "Login to Checkout"}
-                  </Link>
+                <Button className="w-full" onClick={handleCheckout} disabled={loading}>
+                  {loading ? "Loading..." : isAuthenticated ? "Checkout" : "Login to Checkout"}
                 </Button>
               </div>
             </SheetFooter>

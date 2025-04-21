@@ -1,12 +1,12 @@
 import ProductGrid from "@/components/product-grid"
 import SearchBar from "@/components/search-bar"
-import { getProducts } from "@/lib/products"
+import { apiClient } from "@/lib/api-client"
 
 export default async function Home({ searchParams }) {
   // Ensure searchParams is properly awaited
   const params = await Promise.resolve(searchParams)
   const query = params.query || ""
-  const products = await getProducts(query)
+  const products = await apiClient.products.getAll(query)
 
   return (
     <div className="container mx-auto px-4 py-8">
