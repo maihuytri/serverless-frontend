@@ -11,11 +11,10 @@ phases:
   build:
     commands:
       - pnpm build
-      - pnpm export
-      - echo "📂 Built files:"
-      - ls -al
+      - echo "✅ Build complete"
+      - ls -al .next
 
 artifacts:
-  base-directory: out
+  base-directory: .next
   files:
     - '**/*'
